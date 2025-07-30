@@ -13,9 +13,17 @@ user_agents = [
 url_get = "https://nofluffjobs.com/pl/devops"
 url_post = "https://nofluffjobs.com/api/search/posting"
 
-# GET to catch cookies and store them in session object
 def get_session_and_cookies(url_get: str, agent: str) -> requests.Session:
-    # Start a HTTP session
+    """
+    Initiates an HTTP session and sends a GET request to retrieve cookies.
+
+    Args:
+        url_get (str): The URL to send the GET request to.
+        agent (str): User-Agent string to mimic browser behavior.
+
+    Returns:
+        requests.Session: A session object with stored cookies.
+    """
     session = requests.Session() 
     headers_get = {
         "User-Agent": agent,
@@ -31,8 +39,18 @@ def get_session_and_cookies(url_get: str, agent: str) -> requests.Session:
         exit(1)
     return session
 
-# POST to retrieve job postings data as a list
 def fetch_job_postings(session: requests.Session, agent: str, page: int = 1) -> list:
+    """
+    Sends a POST request to retrieve job postings from NoFluffJobs API.
+
+    Args:
+        session (requests.Session): Session object with cookies.
+        agent (str): User-Agent string to include in the request header.
+        page (int, optional): Page number to retrieve. Defaults to 1.
+
+    Returns:
+        list: A list of job postings dictionaries.
+    """
     headers_post = {
         "User-Agent": agent,
         "Accept": "application/json, text/plain, */*",
@@ -68,21 +86,76 @@ def fetch_job_postings(session: requests.Session, agent: str, page: int = 1) -> 
         print(f"Error while POST request: {e}")
         return []
     
-def save_to_file(data: list, object: str, filename: str):
+def save_to_file(data: list, label: str, filename: str) -> None:
+    """
+    Saves the given data to a JSON file.
+
+    Args:
+        data (list): List of data to save.
+        label (str): Label used for print messages (e.g., 'postings', 'urls').
+        filename (str): Name of the output JSON file.
+
+    Returns:
+        None
+    """
     try:
         with open(filename, 'w', encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
-        print(f"Saved {len(data)} {object} to {filename}")
+        print(f"Saved {len(data)} {label} to {filename}")
     except Exception as e:
         print(f"Failed to save file {filename}: {e}")
 
+def get_posting_url(places: list):
+    """
+    Extracts the URL of the job posting from the list of places.
+
+    Args:
+        places (list): List of location dictionaries from a job offer.
+
+    Returns:
+        str or None: URL string if available, otherwise None.
+    """
+    if places:
+        return places[0]["url"] # only first URL is enough, as offers may have many urls depending on number of available locations
+    return None
+
+def get_unique_offers() -> None:
+    """
+    Loads job offers from 'offers.json', removes duplicates (by company name and title),
+    extracts URLs of unique offers, and saves them to 'urls.json'.
+
+    Returns:
+        None
+    """
+    with open("offers.json", "r", encoding='utf-8') as f:
+        offers = json.load(f)
+
+    unique_offers = {}
+    for offer in offers:
+        key = (offer["name"], offer["title"]) # a tuple of company name and a title, e.g. ("Google", "Senior Cloud Engineer")
+        if key not in unique_offers:
+            url = get_posting_url(offer["location"]["places"])
+            if url:
+                unique_offers[key] = url
+
+    urls_list = list(unique_offers.values())
+    save_to_file(data=urls_list, label='urls', filename="urls.json")
+
 def main():
-    # Randomly choosing one of the user_agents that will be used during the session (both POST and GET)
+    """
+    Main execution flow:
+    - Picks a random User-Agent.
+    - Starts a session and performs GET/POST requests.
+    - Saves job postings to 'offers.json'.
+    - Extracts and saves unique offer URLs to 'urls.json'.
+    """
     agent = random.choice(user_agents)
     session = get_session_and_cookies(url_get, agent)
     postings = fetch_job_postings(session, agent, page=4)
     if postings:
-        save_to_file(data=postings, object="postings", filename="offers.json")
+        save_to_file(data=postings, label="postings", filename="offers.json")
+
+    get_unique_offers()
     
 if __name__ == "__main__":
     main()
