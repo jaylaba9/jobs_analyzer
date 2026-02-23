@@ -1,3 +1,4 @@
+import time
 import requests
 import random
 import json
@@ -39,7 +40,7 @@ def get_session_and_cookies(url_get: str, agent: str) -> requests.Session:
         exit(1)
     return session
 
-def fetch_job_postings(session: requests.Session, agent: str, page: int = 1) -> list:
+def fetch_job_postings(session: requests.Session, agent: str, page: int = 1) -> tuple:
     """
     Sends a POST request to retrieve job postings from NoFluffJobs API.
 
@@ -49,7 +50,7 @@ def fetch_job_postings(session: requests.Session, agent: str, page: int = 1) -> 
         page (int, optional): Page number to retrieve. Defaults to 1.
 
     Returns:
-        list: A list of job postings dictionaries.
+        tuple: Tuple of postings(list) and total pages (number)
     """
     headers_post = {
         "User-Agent": agent,
@@ -81,7 +82,10 @@ def fetch_job_postings(session: requests.Session, agent: str, page: int = 1) -> 
         response = session.post(url_post, headers=headers_post, params=params_post, data=json.dumps(payload), timeout=10)
         response.raise_for_status()
         print("POST request successful")
-        return response.json().get("postings", [])
+        full_data = response.json()
+        total_pages = full_data.get("totalPages", 1) # default 1 page
+        postings = full_data.get("postings", [])
+        return postings, total_pages
     except requests.exceptions.RequestException as e:
         print(f"Error while POST request: {e}")
         return []
@@ -151,9 +155,14 @@ def main():
     """
     agent = random.choice(user_agents)
     session = get_session_and_cookies(url_get, agent)
-    postings = fetch_job_postings(session, agent, page=4)
-    if postings:
-        save_to_file(data=postings, label="postings", filename="offers.json")
+    all_postings, total_pages = fetch_job_postings(session, agent, page=1)
+
+    for current_page in range(2, total_pages + 1):
+        new_postings, _ = fetch_job_postings(session, agent, current_page)
+        all_postings.extend(new_postings)
+        time.sleep(1)
+    if all_postings:
+        save_to_file(data=all_postings, label="postings", filename="offers.json")
 
     get_unique_offers()
     
