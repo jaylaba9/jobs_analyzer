@@ -145,13 +145,59 @@ def get_unique_offers() -> None:
     urls_list = list(unique_offers.values())
     save_to_file(data=urls_list, label='urls', filename="urls.json")
 
+def fetch_offer_details(session: requests.Session, agent: str) -> None:
+    """
+    Loads SLUGs of job postings from the urls.json file. Then, fetches "must-have" technologies by sending a GET request to each of the postings using base API URL + SLUG. Saves result in a file.
+
+    Args:
+        session (requests.Session): Session object with cookies.
+        agent (str): User-Agent string to include in the request header.
+
+    Returns:
+        None
+    """
+    with open("urls.json", "r", encoding='utf-8') as f:
+        urls = json.load(f)
+
+    headers = {
+        "User-Agent": agent,
+        "Accept": "application/json, text/plain, */*"
+    }
+
+    api_url = "https://nofluffjobs.com/api/posting/"
+
+    result = []
+    for url in urls:
+        try:
+            current_url = api_url + url
+            response = session.get(current_url, headers=headers, timeout=10)
+            response.raise_for_status()
+            full_data = response.json()
+            # list comprehension to retrieve only names of technologies - field value. This data looks like this:
+            # "requirements": {
+            #   "musts": [
+            #       {
+            #       "value": "SRE",
+            #       "type": "main"
+            # },
+            musts = [req['value'] for req in full_data.get('requirements', {}).get('musts', [])]
+            result.extend(musts)
+            print(f"Fetched: {url}")
+            time.sleep(random.randint(1,3))
+        except Exception as e:
+            print(f"Error while fetching data from {url}: {e}")
+
+    if result:
+        save_to_file(data=result, label='technologies', filename='technologies.json')
+
 def main():
     """
     Main execution flow:
     - Picks a random User-Agent.
     - Starts a session and performs GET/POST requests.
-    - Saves job postings to 'offers.json'.
+    - Saves job postings to 'offers.json' by looping over all available pages.
     - Extracts and saves unique offer URLs to 'urls.json'.
+    - Fetches details of each offer (tech stack) and saves to 'technologies.json'.
     """
     agent = random.choice(user_agents)
     session = get_session_and_cookies(url_get, agent)
@@ -165,6 +211,7 @@ def main():
         save_to_file(data=all_postings, label="postings", filename="offers.json")
 
     get_unique_offers()
-    
+    fetch_offer_details(session, agent)
+
 if __name__ == "__main__":
     main()
