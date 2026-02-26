@@ -1,3 +1,4 @@
+from collections import Counter
 import time
 import requests
 import random
@@ -190,6 +191,118 @@ def fetch_offer_details(session: requests.Session, agent: str) -> None:
     if result:
         save_to_file(data=result, label='technologies', filename='technologies.json')
 
+# synonyms map prepared to group technologies from 'technologies.json'
+synonyms_map = {
+    # Cloud
+    "aws": "AWS",
+    "amazon web services": "AWS",
+    "amazon eks": "Kubernetes",
+    "eks": "Kubernetes",
+    "azure": "Azure",
+    "microsoft azure": "Azure",
+    "azure cloud": "Azure",
+    "aks": "Kubernetes",
+    "azure kubernetes service": "Kubernetes",
+    "gcp": "GCP",
+    "google cloud": "GCP",
+    "google cloud platform": "GCP",
+    "gke": "Kubernetes",
+    "oci": "Oracle Cloud",
+
+    # Containerization and Orchestration
+    "k8s": "Kubernetes",
+    "kubernetes": "Kubernetes",
+    "docker": "Docker",
+    "docker compose": "Docker",
+    "helm": "Helm",
+    "helm charts": "Helm",
+    "openshift": "OpenShift",
+
+    # Infrastructure as Code (IaC)
+    "iac": "Infrastructure as Code",
+    "infrastructure as code": "Infrastructure as Code",
+    "infrastructure as a code": "Infrastructure as Code",
+    "terraform": "Terraform",
+    "ansible": "Ansible",
+    "cloudformation": "CloudFormation",
+    "aws cloudformation": "CloudFormation",
+    "bicep": "Bicep",
+    "pulumi": "Pulumi",
+
+    # CI/CD
+    "ci/cd": "CI/CD",
+    "ci cd": "CI/CD",
+    "ci/cd pipelines": "CI/CD",
+    "ci cd pipelines": "CI/CD",
+    "github actions": "GitHub Actions",
+    "jenkins": "Jenkins",
+    "gitlab ci": "GitLab CI",
+    "gitlab ci/cd": "GitLab CI",
+    "argocd": "ArgoCD",
+    "argo cd": "ArgoCD",
+
+    # Programming and scripting
+    "python": "Python",
+    "golang": "Go",
+    "go": "Go",
+    "bash": "Bash",
+    "shell": "Bash",
+    "bash script": "Bash",
+    "powershell": "PowerShell",
+    "groovy": "Groovy",
+
+    # Monitorings and logs
+    "prometheus": "Prometheus",
+    "grafana": "Grafana",
+    "elk stack": "ELK Stack",
+    "elk": "ELK Stack",
+    "kibana": "ELK Stack",
+    "splunk": "Splunk",
+    "datadog": "Datadog",
+
+    # Network and others
+    "networking": "Networking",
+    "network protocols": "Networking",
+    "security": "Security",
+    "cybersecurity": "Security",
+    "git": "Git",
+    "version control system": "Git"
+}
+
+def analyze_technologies(filename: str) -> None:
+    """
+    Processes file that contains list of all scraped technologies, normalizes them and uses prepared map of synonyms to group them.
+    Counts occurences of each technology and print top technologies with their counters. 
+
+    Args:
+        filename (str): name of the file that contains list of all scraped technologies
+
+    Returns:
+        None
+    """
+    with open(filename, 'r', encoding='utf-8') as f:
+        raw_techs = json.load(f)
+
+    clean_list = []
+    for tech in raw_techs:
+        # Normalize (lower case and space removal)
+        name = tech.lower().strip()
+
+        # Synonyms mapping
+        # If name is not in map, original one is kept
+        standardized_name = synonyms_map.get(name, tech)
+
+        clean_list.append(standardized_name)
+
+    # Counting
+    counts = Counter(clean_list)
+
+    # Printing top15
+    print(f"{'Technology':<25} | {'Occurences':<10}")
+    print('-' * 40)
+    for tech, count in counts.most_common(15):
+        print(f"{tech:<25} | {count:<10}")
+
 def main():
     """
     Main execution flow:
@@ -212,6 +325,7 @@ def main():
 
     get_unique_offers()
     fetch_offer_details(session, agent)
+    analyze_technologies(filename="technologies.json")
 
 if __name__ == "__main__":
     main()
