@@ -124,13 +124,13 @@ def get_posting_url(places: list):
         return places[0]["url"] # only first URL is enough, as offers may have many urls depending on number of available locations
     return None
 
-def get_unique_offers() -> None:
+def get_unique_offers() -> int:
     """
     Loads job offers from 'offers.json', removes duplicates (by company name and title),
     extracts URLs of unique offers, and saves them to 'urls.json'.
 
     Returns:
-        None
+        int: number of unique offers
     """
     with open("offers.json", "r", encoding='utf-8') as f:
         offers = json.load(f)
@@ -145,6 +145,8 @@ def get_unique_offers() -> None:
 
     urls_list = list(unique_offers.values())
     save_to_file(data=urls_list, label='urls', filename="urls.json")
+
+    return len(urls_list)
 
 def fetch_offer_details(session: requests.Session, agent: str) -> None:
     """
@@ -312,19 +314,20 @@ def main():
     - Extracts and saves unique offer URLs to 'urls.json'.
     - Fetches details of each offer (tech stack) and saves to 'technologies.json'.
     """
-    agent = random.choice(user_agents)
-    session = get_session_and_cookies(url_get, agent)
-    all_postings, total_pages = fetch_job_postings(session, agent, page=1)
+    # agent = random.choice(user_agents)
+    # session = get_session_and_cookies(url_get, agent)
+    # all_postings, total_pages = fetch_job_postings(session, agent, page=1)
 
-    for current_page in range(2, total_pages + 1):
-        new_postings, _ = fetch_job_postings(session, agent, current_page)
-        all_postings.extend(new_postings)
-        time.sleep(1)
-    if all_postings:
-        save_to_file(data=all_postings, label="postings", filename="offers.json")
+    # for current_page in range(2, total_pages + 1):
+    #     new_postings, _ = fetch_job_postings(session, agent, current_page)
+    #     all_postings.extend(new_postings)
+    #     time.sleep(1)
+    # if all_postings:
+    #     save_to_file(data=all_postings, label="postings", filename="offers.json")
 
-    get_unique_offers()
-    fetch_offer_details(session, agent)
+    unique_offers = get_unique_offers()
+    # fetch_offer_details(session, agent)
+    print(f"Total offers: {unique_offers}")
     analyze_technologies(filename="technologies.json")
 
 if __name__ == "__main__":
