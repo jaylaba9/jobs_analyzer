@@ -1,8 +1,12 @@
 from collections import Counter
+from datetime import date, timedelta
 import time
 import requests
 import random
 import json
+import streamlit as st
+import pandas as pd
+import plotly.express as px
 
 user_agents = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
@@ -51,7 +55,7 @@ def fetch_job_postings(session: requests.Session, agent: str, page: int = 1) -> 
         page (int, optional): Page number to retrieve. Defaults to 1.
 
     Returns:
-        tuple: Tuple of postings(list) and total pages (number)
+        tuple: Tuple of postings(list), total pages (number) and current date
     """
     headers_post = {
         "User-Agent": agent,
@@ -80,13 +84,14 @@ def fetch_job_postings(session: requests.Session, agent: str, page: int = 1) -> 
     }
 
     try:
+        current_date = date.today()
         response = session.post(url_post, headers=headers_post, params=params_post, data=json.dumps(payload), timeout=10)
         response.raise_for_status()
         print("POST request successful")
         full_data = response.json()
         total_pages = full_data.get("totalPages", 1) # default 1 page
         postings = full_data.get("postings", [])
-        return postings, total_pages
+        return postings, total_pages, current_date
     except requests.exceptions.RequestException as e:
         print(f"Error while POST request: {e}")
         return []
@@ -271,7 +276,7 @@ synonyms_map = {
     "version control system": "Git"
 }
 
-def analyze_technologies(filename: str) -> None:
+def analyze_technologies(filename: str) -> list:
     """
     Processes file that contains list of all scraped technologies, normalizes them and uses prepared map of synonyms to group them.
     Counts occurences of each technology and print top technologies with their counters. 
@@ -280,7 +285,7 @@ def analyze_technologies(filename: str) -> None:
         filename (str): name of the file that contains list of all scraped technologies
 
     Returns:
-        None
+        counts.most_common(15) (list of tuples): Returns a list of tuples which contain technology and number of occurences, e.g. ('Linux', 50)
     """
     with open(filename, 'r', encoding='utf-8') as f:
         raw_techs = json.load(f)
@@ -305,6 +310,28 @@ def analyze_technologies(filename: str) -> None:
     for tech, count in counts.most_common(15):
         print(f"{tech:<25} | {count:<10}")
 
+    return counts.most_common(15)
+
+
+def visualize(offers: int, techs: list, current_date: date):
+    st.title('Currently trending DevOps technologies')
+    st.write(f'This application checked {offers} job offers from one of the IT job boards and retrieved must-have skills.')
+
+    df = pd.DataFrame(techs, columns=['Technology', 'Occurences'])
+    df = df.sort_values(by='Occurences', ascending=True)
+
+    fig = px.bar(df, 
+             x='Occurences', 
+             y='Technology', 
+             orientation='h', 
+             title='Top 15 DevOps technologies',
+             color='Occurences', 
+             color_continuous_scale='Blues')
+
+    st.plotly_chart(fig, use_container_width=True)
+
+    st.write(f'This data was retrieved {current_date}. Next check will be done {current_date + timedelta(days=7)}')
+
 def main():
     """
     Main execution flow:
@@ -316,10 +343,10 @@ def main():
     """
     # agent = random.choice(user_agents)
     # session = get_session_and_cookies(url_get, agent)
-    # all_postings, total_pages = fetch_job_postings(session, agent, page=1)
+    # all_postings, total_pages, current_date = fetch_job_postings(session, agent, page=1)
 
     # for current_page in range(2, total_pages + 1):
-    #     new_postings, _ = fetch_job_postings(session, agent, current_page)
+    #     new_postings, *_ = fetch_job_postings(session, agent, current_page)
     #     all_postings.extend(new_postings)
     #     time.sleep(1)
     # if all_postings:
@@ -328,7 +355,9 @@ def main():
     unique_offers = get_unique_offers()
     # fetch_offer_details(session, agent)
     print(f"Total offers: {unique_offers}")
-    analyze_technologies(filename="technologies.json")
+    most_common_techs = analyze_technologies(filename="technologies.json")
+
+    visualize(unique_offers, most_common_techs, date.today())#current_date)
 
 if __name__ == "__main__":
     main()
