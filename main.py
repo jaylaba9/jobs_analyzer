@@ -1,5 +1,6 @@
 from collections import Counter
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
+import os
 import time
 import requests
 import random
@@ -332,32 +333,91 @@ def visualize(offers: int, techs: list, current_date: date):
 
     st.write(f'This data was retrieved {current_date}. Next check will be done {current_date + timedelta(days=7)}')
 
+
+@st.cache_data(show_spinner="Scraping data... This may take a few minutes.")
+def get_or_fetch_data(tech_file, offers_file) -> tuple:
+    """
+    Orchestrates data retrieval by checking local cache freshness before scraping.
+
+    This function implements a caching strategy: it first checks if the required 
+    JSON files exist and if they are less than 7 days old. If the data is stale 
+    or missing, it triggers the full scraping workflow (fetching listings, 
+    processing unique URLs, and extracting technology details). Otherwise, 
+    it loads existing data from the disk.
+
+    Args:
+        tech_file (str): Path to the JSON file containing aggregated technologies.
+        offers_file (str): Path to the JSON file containing raw job postings.
+
+    Returns:
+        tuple: A tuple containing:
+            - unique_offers (int): Total number of unique job offers processed.
+            - most_common_techs (list): Top 15 technologies with their occurrence counts.
+            - last_update_time (date): The date when the data was last synchronized.
+    """
+    should_update = False
+
+    # 1. Check if files exist
+    if not os.path.exists(tech_file) or not os.path.exists(offers_file):
+        should_update = True
+    else:
+        # 2. Check mtime of file
+        file_mod_time = datetime.fromtimestamp(os.path.getmtime(tech_file))
+        if datetime.now() > file_mod_time + timedelta(days=7):
+            should_update = True
+
+    if should_update:
+        # --- SCRAPINg LOGIC ---
+        # - Picks a random User-Agent.
+        # - Starts a session and performs GET/POST requests.
+        # - Saves job postings to 'offers.json' by looping over all available pages.
+        # - Extracts and saves unique offer URLs to 'urls.json'.
+        # - Fetches details of each offer (tech stack) and saves to 'technologies.json'.
+        agent = random.choice(user_agents)
+        session = get_session_and_cookies(url_get, agent)
+        all_postings, total_pages, current_date = fetch_job_postings(session, agent, page=1)
+
+        for current_page in range(2, total_pages + 1):
+            new_postings, *_ = fetch_job_postings(session, agent, current_page)
+            all_postings.extend(new_postings)
+            time.sleep(1)
+        if all_postings:
+            save_to_file(data=all_postings, label="postings", filename=offers_file)
+
+        unique_offers = get_unique_offers()
+        fetch_offer_details(session, agent)
+        print(f"Total offers: {unique_offers}")
+
+    else:
+        with open(offers_file, 'r', encoding='utf-8') as f:
+            unique_offers = len(json.load(f))
+
+    # get top15 technologies
+    most_common_techs = analyze_technologies(filename=tech_file)
+
+    last_update_time = datetime.fromtimestamp(os.path.getmtime(tech_file)).date()
+
+    return unique_offers, most_common_techs, last_update_time
+
+
 def main():
     """
-    Main execution flow:
-    - Picks a random User-Agent.
-    - Starts a session and performs GET/POST requests.
-    - Saves job postings to 'offers.json' by looping over all available pages.
-    - Extracts and saves unique offer URLs to 'urls.json'.
-    - Fetches details of each offer (tech stack) and saves to 'technologies.json'.
+    Entry point for the Streamlit application.
+    
+    Initializes file paths, invokes the data retrieval logic with built-in 
+    caching, and passes the results to the visualization module. Handles 
+    top-level exceptions to ensure a user-friendly error display.
     """
-    # agent = random.choice(user_agents)
-    # session = get_session_and_cookies(url_get, agent)
-    # all_postings, total_pages, current_date = fetch_job_postings(session, agent, page=1)
+    tech_file = "technologies.json"
+    offers_file = "offers.json"
 
-    # for current_page in range(2, total_pages + 1):
-    #     new_postings, *_ = fetch_job_postings(session, agent, current_page)
-    #     all_postings.extend(new_postings)
-    #     time.sleep(1)
-    # if all_postings:
-    #     save_to_file(data=all_postings, label="postings", filename="offers.json")
+    try:
+        unique_offers, most_common_techs, update_date = get_or_fetch_data(tech_file, offers_file)
 
-    unique_offers = get_unique_offers()
-    # fetch_offer_details(session, agent)
-    print(f"Total offers: {unique_offers}")
-    most_common_techs = analyze_technologies(filename="technologies.json")
+        visualize(unique_offers, most_common_techs, update_date)
 
-    visualize(unique_offers, most_common_techs, date.today())#current_date)
+    except Exception as e:
+        st.error(f"An error occured during data processing: {e}")
 
 if __name__ == "__main__":
     main()
