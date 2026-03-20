@@ -1,4 +1,4 @@
-# 🚀 DevOps Job Market Analyzer
+# DevOps Job Market Analyzer
 
 Interactive dashboard built with **Python**, **Streamlit**, and **Docker** that scrapes, processes, and visualizes the most in-demand technologies in the DevOps landscape based on real-time data from one of the IT job boards.
 <img width="1902" height="868" alt="image" src="https://github.com/user-attachments/assets/7a69689e-8ecf-4873-872a-e1a7fdca9b66" />
@@ -6,23 +6,23 @@ Interactive dashboard built with **Python**, **Streamlit**, and **Docker** that 
 
 ---
 
-### 📌 Key Features
+### Key Features
 * **Automated Scraping:** Periodically fetches job postings from IT job board API.
 * **Smart Caching:** Uses `st.cache_data` and file-system checks to prevent redundant scraping (scans once every 7 days).
 * **Data Normalization:** Maps technology synonyms (e.g., "K8s", "Amazon EKS" -> "Kubernetes") for accurate counting.
 * **Interactive Visualization:** Horizontal bar charts showing the Top 15 "Must-Have" skills.
 * **Containerized Environment:** Fully dockerized.
 
-### 🛠️ Tech Stack
-* **Language:** Python 3.13
+### Tech Stack
+* **Language:** Python
 * **Framework:** [Streamlit](https://streamlit.io/)
 * **Data Analysis:** Pandas, Collections
 * **Visualization:** Plotly Express
-* **DevOps:** Docker (Linux-slim images)
+* **DevOps:** Docker
 
 ---
 
-### 🏗️ Getting Started
+### Getting Started
 
 #### Prerequisites
 * Docker installed on your machine.
@@ -58,7 +58,7 @@ To keep your data persistent (so it doesn't disappear after restarting the conta
 
 ---
 
-### ⚙️ How it works
+### How it works
 1.  **Initialization:** Upon startup, the app checks if `technologies.json` exists and is fresh (less than 7 days old).
 2.  **Scraping Phase:** If data is stale or missing, the script performs a series of GET/POST requests to fetch the latest DevOps job offers.
 3.  **Processing:** It extracts "must-have" requirements, standardizes names using a predefined synonym map, and counts occurrences.
