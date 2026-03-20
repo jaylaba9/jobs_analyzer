@@ -9,7 +9,7 @@ Preview:
 
 ### Key Features
 * **Automated Scraping:** Periodically fetches job postings from IT job board API.
-* **Smart Caching:** Uses `st.cache_data` and file-system checks to prevent redundant scraping (scans once every 7 days).
+* **Smart Caching:** Uses st.cache_data and file-system checks to prevent redundant scraping (scans once every 7 days).
 * **Data Normalization:** Maps technology synonyms (e.g., "K8s", "Amazon EKS" -> "Kubernetes") for accurate counting.
 * **Interactive Visualization:** Horizontal bar charts showing the Top 15 "Must-Have" skills.
 * **Containerized Environment:** Fully dockerized.
@@ -30,7 +30,7 @@ Preview:
 * (Optional) Python 3.13 for local execution without Docker.
 
 #### Running with Docker (Recommended)
-To keep your data persistent (so it doesn't disappear after restarting the container), use **Docker Volumes**. 
+To keep your data persistent use Docker Volumes. 
 
 1.  **Build the image:**
     ```bash
