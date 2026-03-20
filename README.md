@@ -1,6 +1,7 @@
 # DevOps Job Market Analyzer
 
 Interactive dashboard built with **Python**, **Streamlit**, and **Docker** that scrapes, processes, and visualizes the most in-demand technologies in the DevOps landscape based on real-time data from one of the IT job boards.
+Preview:
 <img width="1902" height="868" alt="image" src="https://github.com/user-attachments/assets/7a69689e-8ecf-4873-872a-e1a7fdca9b66" />
 
 
